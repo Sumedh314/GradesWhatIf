@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "WayGrade",
+    "version": "1.0",
+    "description": "Calculate grades on HAC",
+
+    "permissions": ["scripting", "activeTab"],
+
+    "action": {
+
+    },
+
+    "content_scripts": [
+        {
+            "matches": ["https://hac23.esp.k12.ar.us/HomeAccess/Classes/Classwork"],
+            "js": ["content.js"],
+            "all_frames": true
+        }
+    ],
+
+    "background": {
+        "service_worker": "background.js"
+    }
+}
