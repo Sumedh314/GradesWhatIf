@@ -1,13 +1,13 @@
-function printThing() {
-    const iframe = document.getElementById('sg-legacy-iframe');
-    /** @type {HTMLElement} */ const content = iframe.contentDocument || iframe.contentWindow.document;
-    /** @type {HTMLElement} */ const allGradeTables = content.getElementById('plnMain_pnlFullPage');
+const allClassGrades = new Map();
+const classCategoryWeights = new Map();
+const realClassAssignmentGrades = new Map();
+let userClassAssignmentGrades = new Map();
 
-    const allClassGrades = new Map();
-    const classCategoryWeights = new Map();
-    const realClassAssignmentGrades = new Map();
-    let userClassAssignmentGrades = new Map();
-    
+const iframe = document.getElementById('sg-legacy-iframe');
+/** @type {HTMLElement} */ let content = null;
+/** @type {HTMLElement} */ let allGradeTables = null;
+
+function getData() {
     for (const userClass of allGradeTables.querySelectorAll('.AssignmentClass')) {
         const gradeHeader = userClass.querySelector('.sg-header.sg-header-square');
         const className = gradeHeader.querySelector('.sg-header-heading');
@@ -48,14 +48,12 @@ function printThing() {
             realClassAssignmentGrades.set(className, grades);
             userClassAssignmentGrades = realClassAssignmentGrades;
         });
-        
     }
-    console.log(classCategoryWeights);
-    console.log(allClassGrades);
-    console.log(userClassAssignmentGrades);
+}
 
-    realClassAssignmentGrades.forEach((grades, className) => {
-        grades.forEach((data, dataName) => {
+function addTextFields() {
+    realClassAssignmentGrades.forEach((grades, _) => {
+        grades.forEach((data, _) => {
             const inputArea = document.createElement('input');
             inputArea.style.width = '40px';
             inputArea.defaultValue = data.get('score').textContent.trim();
@@ -64,14 +62,26 @@ function printThing() {
     });
 }
 
+function updateGrade(event) {
+    console.log(event);
+}
+
+iframe.addEventListener('load', () => {
+    content = iframe.contentDocument || iframe.contentWindow.document;
+    allGradeTables = content.getElementById('plnMain_pnlFullPage');
+
+    content.addEventListener('input', (event) => updateGrade(event));
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('message');
-    if (message.action === 'printThing') {
-        printThing();
+    if (message.action === 'start') {
+        getData();
+        addTextFields();
     }
 
     return true;
 });
 
-// const observer = new MutationObserver(printThing);
+// const observer = new MutationObserver(getData);
 // observer.observe(document.body, {attributes: true, childList: true, subtree: true});
