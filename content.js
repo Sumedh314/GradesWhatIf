@@ -161,6 +161,7 @@ function addTextFields() {
 function removeTextFields() {
     const textFields = content.querySelectorAll('.extension-text-field, .extension-grade-field');
     textFields.forEach(field => {
+        field.parentElement.style.removeProperty('display');
         field.remove();
     });
 }
@@ -183,8 +184,8 @@ iframe.addEventListener('load', () => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('message');
     if (message.action === 'start') {
+        console.log('message');
         getData();
         addTextFields();
     }

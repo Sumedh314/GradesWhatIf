@@ -4,7 +4,7 @@
     "version": "1.0",
     "description": "Calculate grades on HAC",
 
-    "permissions": ["scripting", "activeTab"],
+    "permissions": ["scripting", "activeTab", "storage"],
 
     "action": {
 
