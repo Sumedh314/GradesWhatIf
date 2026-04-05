@@ -8,14 +8,14 @@ const iframe = document.getElementById('sg-legacy-iframe');
 /** @type {HTMLElement} */ let allGradeTables = null;
 
 function getData() {
-    for (const userClass of allGradeTables.querySelectorAll('.AssignmentClass')) {
-        const gradeHeader = userClass.querySelector('.sg-header.sg-header-square');
+    for (const userClassElement of allGradeTables.querySelectorAll('.AssignmentClass')) {
+        const gradeHeader = userClassElement.querySelector('.sg-header.sg-header-square');
         const className = gradeHeader.querySelector('.sg-header-heading').textContent.trim();
         const classGrade = gradeHeader.querySelector('.sg-header-heading.sg-right').textContent.trim();
 
         finalGradesByClass[className] = classGrade;
 
-        const categoriesTable = userClass.querySelector('.sg-content-grid').querySelector('.sg-asp-table-group').querySelector('table');
+        const categoriesTable = userClassElement.querySelector('.sg-content-grid').querySelector('.sg-asp-table-group').querySelector('table');
         const categoryRows = categoriesTable.querySelectorAll('.sg-asp-table-data-row');
 
         const weightsByCategory = {};
@@ -24,14 +24,20 @@ function getData() {
             const categoryName = rowElements[0].textContent.trim();
             
             const originalWeightValue = Number(rowElements[4]?.textContent.trim());
-            const categoryWeight = rowElements.length > 4 ? originalWeightValue > 1 ? originalWeightValue / 100 : originalWeightValue : 1;
+            let categoryWeight = '';
+            if (rowElements.length > 4) {
+                categoryWeight = originalWeightValue > 1 ? originalWeightValue / 100 : originalWeightValue;
+            }
+            else {
+                categoryWeight = 1;
+            }
             
             weightsByCategory[categoryName] = categoryWeight;
 
             categoryWeightsByClass[className] = weightsByCategory;
         });
         
-        const assignmentRows = userClass.querySelector('.sg-asp-table').querySelectorAll('.sg-asp-table-data-row');
+        const assignmentRows = userClassElement.querySelector('.sg-asp-table').querySelectorAll('.sg-asp-table-data-row');
         
         const gradeDataByAssignment = {};
         assignmentRows.forEach(row => {
@@ -61,34 +67,6 @@ function getData() {
             newGradesByClass = realGradesByClass;
         });
     }
-}
-
-function addTextFields() {
-    const userClassElements = allGradeTables.querySelectorAll('.AssignmentClass');
-
-    userClassElements.forEach(userClass => {
-        const newGradeArea = document.createElement('input');
-        newGradeArea.style.width = '110px';
-        newGradeArea.style.height = '25px';
-        newGradeArea.style.fontSize = '18px';
-        newGradeArea.style.textDecoration = 'bold';
-        
-        const gradeHeader = userClass.querySelector('.sg-header.sg-header-square');
-        const gradeElement = gradeHeader.querySelector('.sg-header-heading.sg-right');
-
-        newGradeArea.defaultValue = gradeElement.textContent.trim();
-        gradeElement.appendChild(newGradeArea);
-    });
-
-    Object.values(realGradesByClass).forEach(grades => {
-        Object.values(grades).forEach(data => {
-            const inputArea = document.createElement('input');
-            inputArea.style.width = '40px';
-            inputArea.defaultValue = data.score;
-
-            data.scoreElement.appendChild(inputArea);
-        });
-    });
 }
 
 function updateClassGrade(event) {
@@ -135,11 +113,60 @@ function updateClassGrade(event) {
     newGradeArea.value = (finalGrade * 100).toPrecision(4) + '%';
 }
 
+function addTextFields() {
+    const userClassElements = allGradeTables.querySelectorAll('.AssignmentClass');
+
+    userClassElements.forEach(userClass => {
+        const newGradeArea = document.createElement('input');
+        newGradeArea.classList.add('extension-grade-field');
+        newGradeArea.style.width = '110px';
+        newGradeArea.style.height = '25px';
+        newGradeArea.style.fontSize = '18px';
+        newGradeArea.style.textDecoration = 'bold';
+        newGradeArea.readOnly = true;
+        
+        const gradeHeader = userClass.querySelector('.sg-header.sg-header-square');
+        const gradeElement = gradeHeader.querySelector('.sg-header-heading.sg-right');
+
+        newGradeArea.defaultValue = gradeElement.textContent.trim();
+        gradeElement.appendChild(newGradeArea);
+    });
+
+    Object.values(realGradesByClass).forEach(grades => {
+        Object.values(grades).forEach(data => {
+            const inputArea = document.createElement('input');
+            inputArea.classList.add('extension-text-field');
+            inputArea.style.width = '40px';
+            inputArea.defaultValue = data.score;
+
+            data.scoreElement.appendChild(inputArea);
+        });
+    });
+}
+
+function removeTextFields() {
+    const textFields = content.querySelectorAll('.extension-text-field, .extension-grade-field');
+    textFields.forEach(field => {
+        field.remove();
+    });
+}
+
 iframe.addEventListener('load', () => {
     content = iframe.contentDocument || iframe.contentWindow.document;
     allGradeTables = content.getElementById('plnMain_pnlFullPage');
 
-    content.addEventListener('input', (event) => updateClassGrade(event));
+    content.addEventListener('focusout', (event) => {
+        if (event.target.classList.contains('extension-text-field')) {
+            console.log(event.target.classList);
+            updateClassGrade(event);
+        }
+    });
+    content.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter' && content.activeElement.classList.contains('extension-text-field')) {
+            event.preventDefault();
+            updateClassGrade(event);
+        }
+    })
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -148,6 +175,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         getData();
         addTextFields();
     }
+    else if (message.action === 'end') {
+        removeTextFields();
+    }
+
+    sendResponse();
 
     return true;
 });
