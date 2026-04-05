@@ -89,11 +89,11 @@ function updateClassGrade(event) {
         const category = assignment.category;
         let score = assignment.score;
         let maxScore = Number(assignment.maxScore);
-        if (score[0] == 'X' || score[0] == 'x' || score == '') {
+        if (score == '' || score[0].toUpperCase() == 'X') {
             score = 0;
             maxScore = 0;
         }
-        else if (score[0] == 'Z' || score[0] == 'z') {
+        else if (score[0].toUpperCase() == 'Z') {
             score = 0;
         }
         score = Number(score);
@@ -137,7 +137,21 @@ function addTextFields() {
             const inputArea = document.createElement('input');
             inputArea.classList.add('extension-text-field');
             inputArea.style.width = '40px';
-            inputArea.defaultValue = data.score;
+            if (data.score == '') {
+                inputArea.defaultValue = '';
+            }
+            else if (data.score[0] == 'X' || data.score[0] == 'x') {
+                inputArea.defaultValue = 'X';
+            }
+            else if (data.score[0] == 'Z' || data.score[0] == 'z') {
+                inputArea.defaultValue = 'Z';
+            }
+            else if (Math.round(data.score) == data.score) {
+                inputArea.defaultValue = Number(data.score).toFixed(0);
+            }
+            else {
+                inputArea.defaultValue = data.score;
+            }
 
             data.scoreElement.appendChild(inputArea);
         });
@@ -157,7 +171,6 @@ iframe.addEventListener('load', () => {
 
     content.addEventListener('focusout', (event) => {
         if (event.target.classList.contains('extension-text-field')) {
-            console.log(event.target.classList);
             updateClassGrade(event);
         }
     });
