@@ -1,7 +1,7 @@
-const allClassGrades = new Map();
-const classCategoryWeights = new Map();
-const realClassAssignmentGrades = new Map();
-let userClassAssignmentGrades = new Map();
+const allClassGrades = {};
+const classCategoryWeights = {};
+const realClassAssignmentGrades = {};
+let userClassAssignmentGrades = {};
 
 const iframe = document.getElementById('sg-legacy-iframe');
 /** @type {HTMLElement} */ let content = null;
@@ -10,60 +10,94 @@ const iframe = document.getElementById('sg-legacy-iframe');
 function getData() {
     for (const userClass of allGradeTables.querySelectorAll('.AssignmentClass')) {
         const gradeHeader = userClass.querySelector('.sg-header.sg-header-square');
-        const className = gradeHeader.querySelector('.sg-header-heading');
-        const classGrade = gradeHeader.querySelector('.sg-header-heading.sg-right');
+        const className = gradeHeader.querySelector('.sg-header-heading').textContent.trim();
+        const classGrade = gradeHeader.querySelector('.sg-header-heading.sg-right').textContent.trim();
 
-        allClassGrades.set(className, classGrade);
+        allClassGrades[className] = classGrade;
 
         const categoriesTable = userClass.querySelector('.sg-content-grid').querySelector('.sg-asp-table-group').querySelector('table');
         const categoryRows = categoriesTable.querySelectorAll('.sg-asp-table-data-row');
 
-        const weights = new Map();
+        const weights = {};
         categoryRows.forEach(row => {
-            const categoryName = row.getElementsByTagName('td')[0];
-            const categoryWeight = row.getElementsByTagName('td').length > 4 ? row.getElementsByTagName('td')[4] : '100';
+            const rowElements = row.getElementsByTagName('td');
+            const categoryName = rowElements[0].textContent.trim();
+            const categoryWeight = rowElements.length > 4 ? rowElements[4].textContent.trim() : '100';
             
-            weights.set(categoryName, categoryWeight);
+            weights[categoryName] = categoryWeight;
 
-            classCategoryWeights.set(className, weights);
+            classCategoryWeights[className] = weights;
         });
         
         const assignmentRows = userClass.querySelector('.sg-asp-table').querySelectorAll('.sg-asp-table-data-row');
         
-        const grades = new Map();
+        const grades = {};
         assignmentRows.forEach(row => {
-            const assignmentName = row.getElementsByTagName('td')[2];
+            const rowElements = row.getElementsByTagName('td');
 
-            const gradeData = new Map();
-            const assignmentCategory = row.getElementsByTagName('td')[3];
-            const assignmentScore = row.getElementsByTagName('td')[4];
-            const maximumScore = row.getElementsByTagName('td')[5];
+            const assignmentName = rowElements[2].querySelector('a').textContent.trim();
 
-            gradeData.set('category', assignmentCategory);
-            gradeData.set('score', assignmentScore);
-            gradeData.set('maxScore', maximumScore);
+            const gradeData = {
+                category: '',
+                score: '',
+                maxScore: ''
+            };
+            const assignmentCategory = rowElements[3];
+            const assignmentScore = rowElements[4];
+            const maximumScore = rowElements[5];
 
-            grades.set(assignmentName, gradeData);
+            gradeData.category = assignmentCategory;
+            gradeData.score = assignmentScore;
+            gradeData.maxScore = maximumScore;
 
-            realClassAssignmentGrades.set(className, grades);
+            grades[assignmentName] = gradeData;
+
+            realClassAssignmentGrades[className] = grades;
             userClassAssignmentGrades = realClassAssignmentGrades;
         });
     }
 }
 
 function addTextFields() {
-    realClassAssignmentGrades.forEach((grades, _) => {
-        grades.forEach((data, _) => {
+    const userClasses = allGradeTables.querySelectorAll('.AssignmentClass');
+    userClasses.forEach(userClass => {
+        const newGradeArea = document.createElement('input');
+        newGradeArea.style.width = '110px';
+        newGradeArea.style.height = '25px';
+        newGradeArea.style.fontSize = '18px';
+        newGradeArea.style.textDecoration = 'bold';
+        
+        const gradeHeader = userClass.querySelector('.sg-header.sg-header-square');
+        const gradeElement = gradeHeader.querySelector('.sg-header-heading.sg-right');
+
+        newGradeArea.defaultValue = gradeElement.textContent.trim();
+        gradeElement.appendChild(newGradeArea);
+    });
+
+    Object.values(realClassAssignmentGrades).forEach(grades => {
+        Object.values(grades).forEach(data => {
             const inputArea = document.createElement('input');
             inputArea.style.width = '40px';
-            inputArea.defaultValue = data.get('score').textContent.trim();
-            data.get('score').appendChild(inputArea);
+            inputArea.defaultValue = data.score.textContent.trim();
+
+            data.score.appendChild(inputArea);
         });
     });
 }
 
 function updateGrade(event) {
-    console.log(event);
+    const score = event.target.parentNode;
+
+    const assignmentElement = score.parentNode.getElementsByTagName('td')[2];
+    const assignmentName = assignmentElement.querySelector('a').textContent.trim();
+    const assignmentWeight = score.parentNode.getElementsByTagName('td')[3].textContent.trim();
+    
+    const classHeader = assignmentElement.closest('.AssignmentClass');
+    const className = classHeader.querySelector('.sg-header-heading').textContent.trim();
+
+    userClassAssignmentGrades[className][assignmentName].score = event.target.value;
+
+    console.log(classCategoryWeights[className][assignmentWeight]);
 }
 
 iframe.addEventListener('load', () => {
