@@ -49,36 +49,50 @@ function getData() {
                 category: '',
                 score: '',
                 maxScore: '',
+                weight: '',
                 scoreElement: null
             };
             const assignmentCategory = rowElements[3].textContent.trim();
             const assignmentScore = rowElements[4].textContent.trim();
             const maximumScore = rowElements[5].textContent.trim();
+            const assignmentWeight = rowElements[6].textContent.trim();
             const assignmentScoreElement = rowElements[4];
 
             gradeData.category = assignmentCategory;
             gradeData.score = assignmentScore;
             gradeData.maxScore = maximumScore;
             gradeData.scoreElement = assignmentScoreElement;
+            gradeData.weight = assignmentWeight;
 
             gradeDataByAssignment[assignmentName] = gradeData;
 
             realGradesByClass[className] = gradeDataByAssignment;
-            newGradesByClass = realGradesByClass;
+
         });
     }
+
+    // chrome.storage.local.get(['newGradesByClass']).then(result => newGradesByClass = result.newGradesByClass);
+    // console.log(newGradesByClass);
+    // if (newGradesByClass == {}) {
+    newGradesByClass = realGradesByClass;
+    //     chrome.storage.local.set({'newGradesByClass': newGradesByClass});
+    // }
+    // else {
+    //     console.log(newGradesByClass);
+    // }
 }
 
 function updateClassGrade(event) {
     const gradeElement = event.target.parentNode;
 
-    const assignmentElement = gradeElement.parentNode.getElementsByTagName('td')[2];
-    const assignmentName = assignmentElement.querySelector('a').textContent.trim();
+    const assignmentRowElement = gradeElement.parentNode.getElementsByTagName('td')[2];
+    const assignmentName = assignmentRowElement.querySelector('a').textContent.trim();
 
-    const classHeader = assignmentElement.closest('.AssignmentClass');
+    const classHeader = assignmentRowElement.closest('.AssignmentClass');
     const className = classHeader.querySelector('.sg-header-heading').textContent.trim();
 
     newGradesByClass[className][assignmentName].score = event.target.value;
+    chrome.storage.local.set({['newGradesByClass']: newGradesByClass});
 
     const totalUserPointsByCategory = {};
     const totalMaxPointsByCategory = {};
@@ -118,9 +132,9 @@ function addTextFields() {
 
     userClassElements.forEach(userClass => {
         const newGradeArea = document.createElement('input');
-        newGradeArea.classList.add('extension-grade-field');
+        newGradeArea.classList.add('extension', 'grade-field');
         newGradeArea.style.width = '110px';
-        newGradeArea.style.height = '25px';
+        newGradeArea.style.height = '20px';
         newGradeArea.style.fontSize = '18px';
         newGradeArea.style.textDecoration = 'bold';
         newGradeArea.readOnly = true;
@@ -130,40 +144,85 @@ function addTextFields() {
 
         newGradeArea.defaultValue = gradeElement.textContent.trim();
         gradeElement.appendChild(newGradeArea);
+
+        const newAssignmentButtonRow = document.createElement('tr');
+        newAssignmentButtonRow.classList.add('extension', 'assignment-row');
+
+        const newAssignmentButtonCell = document.createElement('td');
+        newAssignmentButtonCell.colSpan = 6;
+
+        const newAssignmentButton = document.createElement('button');
+        newAssignmentButton.textContent = 'Add assignment';
+        newAssignmentButton.type = 'button';
+        newAssignmentButton.style.display = 'block';
+        newAssignmentButton.style.width = '100%';
+        newAssignmentButton.style.height = '12px';
+        newAssignmentButton.style.backgroundColor = 'white';
+        newAssignmentButton.style.borderWidth = '1px';
+        newAssignmentButton.style.borderRadius = '999px';
+        newAssignmentButton.classList.add('extention', 'assignment-button')
+        
+        const gradeTableHeader = userClass.querySelector('.sg-asp-table-header-row');
+        newAssignmentButtonCell.appendChild(newAssignmentButton);
+        newAssignmentButtonRow.appendChild(newAssignmentButtonCell);
+        gradeTableHeader.insertAdjacentElement('afterend', newAssignmentButtonRow);
     });
 
-    Object.values(realGradesByClass).forEach(grades => {
-        Object.values(grades).forEach(data => {
+    Object.values(realGradesByClass).forEach(assignmentsByClass => {
+        Object.values(assignmentsByClass).forEach(assignment => {
             const inputArea = document.createElement('input');
-            inputArea.classList.add('extension-text-field');
+            inputArea.classList.add('extension', 'text-field');
             inputArea.style.width = '40px';
-            if (data.score == '') {
+            inputArea.style.height = '12px';
+
+            if (assignment.score == '') {
                 inputArea.defaultValue = '';
             }
-            else if (data.score[0] == 'X' || data.score[0] == 'x') {
+            else if (assignment.score[0] == 'X' || assignment.score[0] == 'x') {
                 inputArea.defaultValue = 'X';
             }
-            else if (data.score[0] == 'Z' || data.score[0] == 'z') {
+            else if (assignment.score[0] == 'Z' || assignment.score[0] == 'z') {
                 inputArea.defaultValue = 'Z';
             }
-            else if (Math.round(data.score) == data.score) {
-                inputArea.defaultValue = Number(data.score).toFixed(0);
+            else if (Math.round(assignment.score) == assignment.score) {
+                inputArea.defaultValue = Number(assignment.score).toFixed(0);
             }
             else {
-                inputArea.defaultValue = data.score;
+                inputArea.defaultValue = assignment.score;
             }
 
-            data.scoreElement.appendChild(inputArea);
+            assignment.scoreElement.insertAdjacentElement('beforeend', inputArea);
         });
     });
+
+    content.addEventListener('click', detectAssignmentButtonClick);
+}
+
+function addAssignment(event) {
+    event.target.closest('table').style.tableLayout = 'fixed';
+    const newAssignmentRow = document.createElement('tr');
+    newAssignmentRow.classList.add('extension', 'assignment-row');
+    for (let i = 0; i < 6; i++) {
+        const cell = document.createElement('td');
+        // cell.style.width = 'auto';
+        cell.insertAdjacentElement('beforeend', document.createElement('input'));
+        newAssignmentRow.insertAdjacentElement('beforeend', cell);
+    }
+    event.target.parentNode.parentNode.insertAdjacentElement('afterend', newAssignmentRow);
 }
 
 function removeTextFields() {
-    const textFields = content.querySelectorAll('.extension-text-field, .extension-grade-field');
+    const textFields = content.querySelectorAll('.extension');
     textFields.forEach(field => {
         field.parentElement.style.removeProperty('display');
         field.remove();
     });
+}
+
+function detectAssignmentButtonClick(event) {
+    if (event.target.classList.contains('assignment-button')) {
+        addAssignment(event);
+    }
 }
 
 iframe.addEventListener('load', () => {
@@ -171,26 +230,30 @@ iframe.addEventListener('load', () => {
     allGradeTables = content.getElementById('plnMain_pnlFullPage');
 
     content.addEventListener('focusout', (event) => {
-        if (event.target.classList.contains('extension-text-field')) {
+        if (event.target.classList.contains('text-field')) {
             updateClassGrade(event);
         }
     });
     content.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter' && content.activeElement.classList.contains('extension-text-field')) {
+        if (event.key === 'Enter' && content.activeElement.classList.contains('text-field')) {
             event.preventDefault();
             updateClassGrade(event);
         }
     })
 });
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'start') {
+chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
+    if (message.action === 'toggle') {
         console.log('message');
-        getData();
-        addTextFields();
-    }
-    else if (message.action === 'end') {
-        removeTextFields();
+        const extentionElements = content.querySelectorAll('.extension');
+        if (extentionElements.length > 0) {
+            removeTextFields();
+            content.removeEventListener('click', detectAssignmentButtonClick);
+        }
+        else {
+            getData();
+            addTextFields();
+        }
     }
 
     sendResponse();
