@@ -1,0 +1,25 @@
+.grade-field {
+    width: 110px;
+    height: 20px;
+    font-size: 18px;
+    text-decoration: bold;
+}
+
+.new-assignment-button {
+    display: block;
+    width: 100%;
+    height: 20px;
+    background-color: white;
+    border-width: 1px;
+    border-radius: 999px;
+}
+
+.new-assignment-button:hover {
+    background-color: lightgray;
+    cursor: pointer;
+}
+
+.text-field {
+    width: 40px;
+    height: 12px;
+}

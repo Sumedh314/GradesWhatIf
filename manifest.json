@@ -6,19 +6,28 @@
 
     "permissions": ["scripting", "activeTab", "storage"],
 
-    "action": {
+    "action": {},
 
+    "background": {
+        "service_worker": "background.js"
     },
 
     "content_scripts": [
         {
             "matches": ["https://hac23.esp.k12.ar.us/HomeAccess/Classes/Classwork"],
-            "js": ["content.js"],
+            "js": ["content_script/content.js"],
+            "css": ["content_script/content.css"],
             "all_frames": true
         }
     ],
 
-    "background": {
-        "service_worker": "background.js"
+    "commands": {
+        "reload_extension": {
+            "suggested_key": {
+                "default": "Ctrl+J",
+                "mac": "Command+J"
+            },
+            "description": "Reload extension"
+        }
     }
 }

@@ -72,14 +72,13 @@ function getData() {
             // Add values to objects
             assignmentData[assignmentName] = gradeData;
             allRealGrades[className] = assignmentData;
-
         });
     }
 
     // chrome.storage.local.get(['newGradesByClass']).then(result => newGradesByClass = result.newGradesByClass);
     // console.log(newGradesByClass);
     // if (newGradesByClass == {}) {
-    allNewGrades = structuredClone(allRealGrades);
+    allNewGrades = allRealGrades;
     //     chrome.storage.local.set({'newGradesByClass': newGradesByClass});
     // }
     // else {
@@ -145,9 +144,9 @@ function updateClassGrade(event) {
 /**
  * Adds all texts boxes and buttons that make this thing useful.
  */
-function addFunctionality() {
+async function addFunctionality() {
 
-    // All the divs that contain class grades
+    // All the div elements that contain class grades
     const userClassElements = allGradeTables.querySelectorAll('.AssignmentClass');
 
     // Add displays for new hypothetical overall class grades and add "Add assignment" buttons at the top of each class's grade table
@@ -156,16 +155,12 @@ function addFunctionality() {
         // Create element to display new grade
         const newGradeArea = document.createElement('input');
         newGradeArea.classList.add('extension', 'grade-field');
-        newGradeArea.style.width = '110px';
-        newGradeArea.style.height = '20px';
-        newGradeArea.style.fontSize = '18px';
-        newGradeArea.style.textDecoration = 'bold';
         newGradeArea.readOnly = true;
         
         // Find place where current grade is displayed and add new grade to the end of it
         const gradeElement = userClass.querySelector('.sg-header-heading.sg-right');
         newGradeArea.defaultValue = gradeElement.textContent.trim();
-        gradeElement.insertAdjacentElement('afterend', newGradeArea);
+        gradeElement.insertAdjacentElement('beforeend', newGradeArea);
 
         // Add row in table for "Add assignment" button
         const newAssignmentButtonRow = document.createElement('tr');
@@ -177,15 +172,9 @@ function addFunctionality() {
 
         // Create "Add assignment" button
         const newAssignmentButton = document.createElement('button');
-        newAssignmentButton.textContent = 'Add assignment';
+        newAssignmentButton.classList.add('extension', 'new-assignment-button')
         newAssignmentButton.type = 'button';
-        newAssignmentButton.style.display = 'block';
-        newAssignmentButton.style.width = '100%';
-        newAssignmentButton.style.height = '12px';
-        newAssignmentButton.style.backgroundColor = 'white';
-        newAssignmentButton.style.borderWidth = '1px';
-        newAssignmentButton.style.borderRadius = '999px';
-        newAssignmentButton.classList.add('extension', 'assignment-button')
+        newAssignmentButton.textContent = 'Add assignment';
         
         // Add the button right below the table header
         const gradeTableHeader = userClass.querySelector('.sg-asp-table-header-row');
@@ -203,13 +192,11 @@ function addFunctionality() {
             // Create text field
             const inputArea = document.createElement('input');
             inputArea.classList.add('extension', 'text-field');
-            inputArea.style.width = '40px';
-            inputArea.style.height = '12px';
 
             // Update default value of text fields to represent the same value as original grades
             // If the grade starts with X (exempt) or Z (late), make those the default value
-            if (assignment.score[0].toUpperCase() == 'X' || assignment.score[0].toUpperCase() == 'Z') {
-                inputArea.defaultValue = assignment.score.toUpperCase();
+            if (assignment.score[0]?.toUpperCase() == 'X' || assignment.score[0]?.toUpperCase() == 'Z') {
+                inputArea.defaultValue = assignment.score[0].toUpperCase();
             }
 
             // If the grade is an integer, remove its decimals
@@ -229,6 +216,9 @@ function addFunctionality() {
 
     // When the content is clicked, see if the "Add assignment" button was clicked
     content.addEventListener('click', detectAssignmentButtonClick);
+
+    // Make sure CSS is injected to style additional features
+    chrome.runtime.sendMessage({ action: 'injectCSS' });
 }
 
 /**
@@ -267,7 +257,7 @@ function removeFunctionality() {
  * @param {object} event Place where user clicked
  */
 function detectAssignmentButtonClick(event) {
-    if (event.target.classList.contains('assignment-button')) {
+    if (event.target.classList.contains('new-assignment-button')) {
         addAssignment(event);
     }
 }
