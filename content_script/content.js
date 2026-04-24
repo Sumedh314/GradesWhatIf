@@ -11,7 +11,7 @@ const iframe = document.getElementById('sg-legacy-iframe');
 /**
  * Gets the user's grades and assignment weights and stores them in the corresponding objects.
  */
-function getData() {
+async function getData() {
 
     // Loop through each class to get all the data
     for (const userClassElement of allGradeTables.querySelectorAll('.AssignmentClass')) {
@@ -75,15 +75,17 @@ function getData() {
         });
     }
 
-    // chrome.storage.local.get(['newGradesByClass']).then(result => newGradesByClass = result.newGradesByClass);
-    // console.log(newGradesByClass);
-    // if (newGradesByClass == {}) {
-    allNewGrades = allRealGrades;
-    //     chrome.storage.local.set({'newGradesByClass': newGradesByClass});
-    // }
-    // else {
-    //     console.log(newGradesByClass);
-    // }
+    const allNewGradesData = await chrome.storage.local.get('allNewGrades');
+    allNewGrades = allNewGradesData.allNewGrades;
+
+    if (Object.keys(allNewGrades).length == 0) {
+        allNewGrades = allRealGrades;
+        chrome.storage.local.set({ allNewGrades: allNewGrades });
+        // console.log(allNewGrades);
+    }
+    else {
+        // console.log(allNewGrades);
+    }
 }
 
 /**
@@ -103,7 +105,7 @@ function updateClassGrade(event) {
 
     // Update object and local storage to store new value user entered
     allNewGrades[className][assignmentName].score = event.target.value;
-    chrome.storage.local.set({['newGradesByClass']: allNewGrades});
+    chrome.storage.local.set({ allNewGrades: allNewGrades });
 
     // Objects to store data for each category to help calculate final grade
     const totalCategoryUserPoints = {}; // Total points user has in each category           {category: points}
@@ -184,10 +186,11 @@ async function addFunctionality() {
     });
 
     // Add text fields next to each grade in every class
-    Object.values(allRealGrades).forEach(classAssignments => {
+    for (const userClass of Object.keys(allRealGrades)) {
 
         // Loop through all classes
-        Object.values(classAssignments).forEach(assignment => {
+        for (const assignmentName of Object.keys(allRealGrades[userClass])) {
+            const assignment = allRealGrades[userClass][assignmentName];
 
             // Create text field
             const inputArea = document.createElement('input');
@@ -195,7 +198,12 @@ async function addFunctionality() {
 
             // Update default value of text fields to represent the same value as original grades
             // If the grade starts with X (exempt) or Z (late), make those the default value
-            if (assignment.score[0]?.toUpperCase() == 'X' || assignment.score[0]?.toUpperCase() == 'Z') {
+            console.log(userClass);
+            if (allNewGrades[userClass]?.[assignmentName]?.score != undefined) {
+                inputArea.defaultValue = allNewGrades[userClass][assignmentName].score;
+            }
+
+            else if (assignment.score[0]?.toUpperCase() == 'X' || assignment.score[0]?.toUpperCase() == 'Z') {
                 inputArea.defaultValue = assignment.score[0].toUpperCase();
             }
 
@@ -211,14 +219,14 @@ async function addFunctionality() {
 
             // Add text field right next to actual grade
             assignment.scoreElement.insertAdjacentElement('beforeend', inputArea);
-        });
-    });
+        }
+    }
 
     // When the content is clicked, see if the "Add assignment" button was clicked
     content.addEventListener('click', detectAssignmentButtonClick);
 
     // Make sure CSS is injected to style additional features
-    chrome.runtime.sendMessage({ action: 'injectCSS' });
+    await chrome.runtime.sendMessage({ action: 'injectCSS' });
 }
 
 /**
@@ -241,9 +249,35 @@ function addAssignment(event) {
 }
 
 /**
+ * Calls function to calculate and update user's new grade after entering in a new hypothetical grade
+ */
+function detectUserGradeUpdate()  {
+    
+    // Set Iframe's content and area with all grades
+    content = iframe.contentDocument || iframe.contentWindow.document;
+    allGradeTables = content.getElementById('plnMain_pnlFullPage');
+
+    // Update grade when user focuses out of a text box or presses enter
+    content.addEventListener('focusout', (event) => {
+
+        if (event.target.classList.contains('text-field')) {
+            updateClassGrade(event);
+        }
+    });
+    content.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter' && content.activeElement.classList.contains('text-field')) {
+            event.preventDefault();
+            updateClassGrade(event);
+        }
+    });
+}
+
+/**
  * Removes all of the extension's functionality. Runs when user clicks icon again.
  */
 function removeFunctionality() {
+    iframe.removeEventListener('load', detectUserGradeUpdate);
+
     const textFields = content.querySelectorAll('.extension');
     textFields.forEach(field => {
         field.parentElement.style.removeProperty('display');
@@ -263,44 +297,21 @@ function detectAssignmentButtonClick(event) {
 }
 
 // Runs when the user's grades are loaded
-iframe.addEventListener('load', () => {
-    
-    // Set Iframe's content and area with all grades
-    content = iframe.contentDocument || iframe.contentWindow.document;
-    allGradeTables = content.getElementById('plnMain_pnlFullPage');
+iframe.addEventListener('load', detectUserGradeUpdate);
 
-    // Update grade when user focuses out of a text box or presses enter
-    content.addEventListener('focusout', (event) => {
-        if (event.target.classList.contains('text-field')) {
-            updateClassGrade(event);
-        }
-    });
-    content.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter' && content.activeElement.classList.contains('text-field')) {
-            event.preventDefault();
-            updateClassGrade(event);
-        }
-    })
-});
-
-// Listen for messages
-chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (message, _, sendResponse) => {
 
     // Add or remove extension functionality if user clicks extension icon
-    if (message.action === 'toggle') {
-        const extensionElements = content.querySelectorAll('.extension');
-        if (extensionElements.length > 0) {
-            removeFunctionality();
-            content.removeEventListener('click', detectAssignmentButtonClick);
-        }
-        else {
-            getData();
-            addFunctionality();
-        }
+    if (message.action == 'activate') {
+        await getData();
+        await addFunctionality();
+    }
+    else if (message.action == 'deactivate') {
+        removeFunctionality();
+        content.removeEventListener('click', detectAssignmentButtonClick);
     }
 
     sendResponse();
-
     return true;
 });
 
